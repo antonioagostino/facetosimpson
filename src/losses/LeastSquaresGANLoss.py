@@ -1,7 +1,7 @@
 import torch.nn as nn
 import torch
 
-class LeastSquareGANLoss(nn.Module):
+class LeastSquaresGANLoss(nn.Module):
     def __init__(self, device: torch.device):
         super().__init__()
         self.device = device

@@ -1,4 +1,3 @@
-from numpy import save
 import torch.nn as nn
 from torch.nn import init
 import torch
@@ -6,7 +5,7 @@ import torchvision
 import random
 from .ResNetGenerator import ResNetGenerator
 from .PatchGANDiscriminator import PatchGANDiscriminator
-from losses.LeastSquareGANLoss import LeastSquareGANLoss
+from losses.LeastSquaresGANLoss import LeastSquaresGANLoss
 import os
 import numpy as np
 import matplotlib.pyplot as plt
@@ -69,7 +68,7 @@ class CycleGAN(nn.Module):
             self.D_Y.apply(self.__initialize_weights)
 
             # Define loss functions
-            self.adversarialLoss = LeastSquareGANLoss(self.device).to(self.device)
+            self.adversarialLoss = LeastSquaresGANLoss(self.device).to(self.device)
             self.cycleLoss = nn.L1Loss()
 
             # Define optimizers
