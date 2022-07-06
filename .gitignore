@@ -1,6 +1,9 @@
 # Datasets
 datasets/
 
+# Checkpoints
+checkpoints/
+
 # macOS Desktop Services Store files
 .DS_Store
 
