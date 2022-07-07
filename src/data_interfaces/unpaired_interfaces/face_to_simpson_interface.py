@@ -10,7 +10,7 @@ import random
 from PIL import Image
 
 class FaceToSimpsonDataset(Dataset):
-    def __init__(self, x_dir: str, y_dir: str, apply_transforms=True):
+    def __init__(self, x_dir: str, y_dir: str, apply_transforms: bool = True):
         self.x_dir = x_dir
         self.y_dir = y_dir
         self.x_filenames = [name for name in os.listdir(self.x_dir) if os.path.isfile(os.path.join(self.x_dir, name))]

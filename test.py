@@ -24,16 +24,14 @@ if __name__ == "__main__":
     test_dataloader = DataLoader(test_data, batch_size=4, shuffle=True)
 
     # Create Model
-    cycleGAN = CycleGAN(training_phase=True, device=execution_device, save_dir="checkpoints",
+    cycleGAN = CycleGAN(training_phase=False, device=execution_device, save_dir="checkpoints",
                         lambda_cycle_loss=10.0, init_gain=0.02)
 
     print(f"Device used: {execution_device}")
 
     print("Testing...")
-    cycleGAN_test = CycleGAN(training_phase=True, device=execution_device, save_dir="checkpoints",
-                        lambda_cycle_loss=10.0, init_gain=0.02)
 
-    cycleGAN_test.load_checkpoints(3)
+    cycleGAN.load_checkpoints(5)
 
     for i, input_data in enumerate(test_dataloader):
         x_images, y_images = input_data

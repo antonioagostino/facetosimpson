@@ -4,6 +4,9 @@ datasets/
 # Checkpoints
 checkpoints/
 
+# Generated images
+generated/
+
 # macOS Desktop Services Store files
 .DS_Store
 

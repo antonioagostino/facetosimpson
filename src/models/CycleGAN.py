@@ -2,6 +2,7 @@ import torch.nn as nn
 from torch.nn import init
 import torch
 import torchvision
+from torchvision.utils import save_image
 import random
 from .ResNetGenerator import ResNetGenerator
 from .PatchGANDiscriminator import PatchGANDiscriminator
@@ -9,6 +10,7 @@ from losses.LeastSquaresGANLoss import LeastSquaresGANLoss
 import os
 import numpy as np
 import matplotlib.pyplot as plt
+from utils import bcolors
 
 class CycleGAN(nn.Module):
     """
@@ -21,7 +23,8 @@ class CycleGAN(nn.Module):
         - No dropout is used.
     """
     def __init__(self, training_phase: bool, device: torch.device, save_dir: str, 
-                    lambda_cycle_loss: float, init_gain: float):
+                    generated_images_dir: str, generated_filenames_file=None,
+                    lambda_cycle_loss: float = 10.0, init_gain: float = 0.02):
         """
         Parameters:
             training_phase (bool): Whether the model is in training phase or not.
@@ -31,6 +34,9 @@ class CycleGAN(nn.Module):
 
         self.device = device
         self.save_dir = save_dir
+        self.generated_images_dir = generated_images_dir
+        self.generated_filenames_file = generated_filenames_file
+        self.image_export_counter = 0
 
         # Define G: X -> Y mapping function and F: Y -> X mapping function
         self.G = ResNetGenerator(num_resnet_blocks=9, bias=True, normaliz_layer=nn.InstanceNorm2d).to(self.device)
@@ -133,6 +139,9 @@ class CycleGAN(nn.Module):
         self.generators_loss = self.loss_G + self.loss_F + self.lambda_cycle_loss * (self.loss_cycle_X + self.loss_cycle_Y)
         self.generators_loss.backward()
 
+    def print_losses(self):
+        print(f"{bcolors.YELLOW}G Loss: {bcolors.RED}{self.loss_G.item():.4f}{bcolors.YELLOW}, F Loss: {bcolors.RED}{self.loss_F.item():.4f}{bcolors.YELLOW}, D_X Loss: {bcolors.RED}{self.loss_D_X.item():.4f}{bcolors.YELLOW}, D_Y Loss: {bcolors.RED}{self.loss_D_Y.item():.4f}{bcolors.YELLOW}, Cycle Loss X: {bcolors.RED}{self.loss_cycle_X.item():.4f}{bcolors.YELLOW}, Cycle Loss Y: {bcolors.RED}{self.loss_cycle_Y.item():.4f}")
+
     def __backward_discriminators(self):
 
         # D_Y loss on real Y images
@@ -145,8 +154,8 @@ class CycleGAN(nn.Module):
         loss_D_Y_fake = self.adversarialLoss(D_Y_pred_on_fake, False)
 
         # D_Y whole loss (Least Squares) and backward pass
-        loss_D_Y = (loss_D_Y_real + loss_D_Y_fake) * 0.5
-        loss_D_Y.backward()
+        self.loss_D_Y = (loss_D_Y_real + loss_D_Y_fake) * 0.5
+        self.loss_D_Y.backward()
 
         # D_X loss on real X images
         D_X_pred_on_real = self.D_X(self.real_x)
@@ -158,8 +167,8 @@ class CycleGAN(nn.Module):
         loss_D_X_fake = self.adversarialLoss(D_X_pred_on_fake, False)
 
         # D_X whole loss (Least Squares) and backward pass
-        loss_D_X = (loss_D_X_real + loss_D_X_fake) * 0.5
-        loss_D_X.backward()
+        self.loss_D_X = (loss_D_X_real + loss_D_X_fake) * 0.5
+        self.loss_D_X.backward()
 
     def __freeze_discriminators(self):
         for param in self.D_Y.parameters():
@@ -200,6 +209,16 @@ class CycleGAN(nn.Module):
             self.__print_results(self.reconstruction_x)
             self.__print_results(self.reconstruction_y)
 
+    def validation_step(self):
+        with torch.no_grad():
+            self.forward()
+            image_filename = f"{self.image_export_counter}.png"
+            export_path = os.path.join(self.generated_images_dir, image_filename)
+            save_image(self.fake_y, export_path)
+            self.generated_filenames_file.write(export_path + "\n")
+            self.image_export_counter += 1
+
+
     def save_checkpoints(self, epoch: int):
         models_to_save = ["G", "F", "D_Y", "D_X"]
         for model in models_to_save:
@@ -220,19 +239,24 @@ class CycleGAN(nn.Module):
             net = getattr(self, optimizer)
             torch.save(net.state_dict(), save_path)
 
-    def load_checkpoints(self, epoch: int):
-        models_to_load = ["G", "F", "D_Y", "D_X"]
+    def load_checkpoints(self, epoch: int, restore_training: bool = False):
+        models_to_load = ["G", "F"]
+
+        if restore_training:
+            models_to_load.append("D_Y")
+            models_to_load.append("D_X")
+        
         for model in models_to_load:
             load_filename = f"{model}_{epoch}.pt"
             load_path = os.path.join(self.save_dir, load_filename)
             net = getattr(self, model)
-            # TODO: Restore checkpoin on MPS
-            # net.load_state_dict(torch.load(load_path, map_location=self.device))
-            net.load_state_dict(torch.load(load_path))
+            # TODO: Restore checkpoints on MPS
+            net.load_state_dict(torch.load(load_path, map_location=self.device))
 
-        optimizers = ['optimizer_G', 'optimizer_D']
-        for optimizer in optimizers:
-            load_filename = f"{optimizer}_{epoch}.pt"
-            load_path = os.path.join(self.save_dir, load_filename)
-            net = getattr(self, optimizer)
-            net.load_state_dict(torch.load(load_path))
+        if restore_training:
+            optimizers = ['optimizer_G', 'optimizer_D']
+            for optimizer in optimizers:
+                load_filename = f"{optimizer}_{epoch}.pt"
+                load_path = os.path.join(self.save_dir, load_filename)
+                net = getattr(self, optimizer)
+                net.load_state_dict(torch.load(load_path, map_location=self.device))
