@@ -46,8 +46,10 @@ if __name__ == "__main__":
     training_data = torch.utils.data.Subset(training_data, train_indices)
     validation_data = torch.utils.data.Subset(validation_data, val_indices)
 
+    batch_size = 4
+
     # Create Data Loaders
-    train_dataloader = DataLoader(training_data, batch_size=1, shuffle=True)
+    train_dataloader = DataLoader(training_data, batch_size=batch_size, shuffle=True)
     val_dataloader = DataLoader(validation_data, batch_size=1, shuffle=True)
 
 
