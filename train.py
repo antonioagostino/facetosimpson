@@ -21,7 +21,7 @@ if __name__ == "__main__":
     generated_images_dir = "generated"
 
     # A file containing the path of all the images generated
-    generated_filenames_file_path = "gt_list.txt"
+    generated_filenames_file_path = "gtlist.txt"
     generated_filenames_file = open(generated_filenames_file_path, "w")
 
     report_losses_and_metrics_file_path = "reports/report_losses_and_metrics.txt"
