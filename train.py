@@ -1,3 +1,5 @@
+import numpy
+import sklearn
 from data_interfaces.unpaired_interfaces.face_to_simpson_interface import FaceToSimpsonDataset
 from torch.utils.data import DataLoader
 from torchvision.utils import save_image
@@ -8,6 +10,14 @@ import data_ios
 import shutil
 import torch
 import os
+import sklearn.model_selection
+import matplotlib.pyplot as plt
+import numpy as np
+
+def imshow(img):
+    npimg = img.numpy()
+    plt.imshow(np.transpose(np.squeeze(npimg), (1, 2, 0)))
+    plt.show()
 
 if __name__ == "__main__":
 
@@ -24,14 +34,18 @@ if __name__ == "__main__":
     '''training_data = FaceToSimpsonDataset("datasets/my_simpson_dataset/trainB", "datasets/my_simpson_dataset/trainA")'''
     
     training_data = FaceToSimpsonDataset("datasets/tiny_dataset/trainB", "datasets/tiny_dataset/trainA")
+    validation_data = FaceToSimpsonDataset("datasets/tiny_dataset/trainB", "datasets/tiny_dataset/trainA", apply_transforms=False)
 
     training_set_portion = 0.85
-    training_set_size = int(training_set_portion * len(training_data))
+    num_train = len(training_data)
+    indices = list(range(num_train))
 
-    training_data, validation_data = torch.utils.data.random_split(training_data, [training_set_size, len(training_data) - training_set_size])
+    train_indices, val_indices = sklearn.model_selection.train_test_split(indices, train_size=training_set_portion)
+    training_data = torch.utils.data.Subset(training_data, train_indices)
+    validation_data = torch.utils.data.Subset(validation_data, val_indices)
 
     # Create Data Loaders
-    train_dataloader = DataLoader(training_data, batch_size=4, shuffle=True)
+    train_dataloader = DataLoader(training_data, batch_size=1, shuffle=True)
     val_dataloader = DataLoader(validation_data, batch_size=1, shuffle=True)
 
 
