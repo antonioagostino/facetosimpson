@@ -99,7 +99,7 @@ class CycleGAN(nn.Module):
         self.real_y = y_img.to(self.device)
     
     
-    def __get_generated_image(self, generator_buffer: list[torch.Tensor], generator_buffer_limit: int, images):
+    def __get_generated_image(self, generator_buffer: list[torch.Tensor], generator_buffer_limit: int, images: list[torch.Tensor]):
         images_to_return = []
         for image in images:
             image = torch.unsqueeze(image.data, 0)
