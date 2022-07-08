@@ -142,6 +142,9 @@ class CycleGAN(nn.Module):
     def print_losses(self):
         print(f"{bcolors.YELLOW}G Loss: {bcolors.RED}{self.loss_G.item():.4f}{bcolors.YELLOW}, F Loss: {bcolors.RED}{self.loss_F.item():.4f}{bcolors.YELLOW}, D_X Loss: {bcolors.RED}{self.loss_D_X.item():.4f}{bcolors.YELLOW}, D_Y Loss: {bcolors.RED}{self.loss_D_Y.item():.4f}{bcolors.YELLOW}, Cycle Loss X: {bcolors.RED}{self.loss_cycle_X.item():.4f}{bcolors.YELLOW}, Cycle Loss Y: {bcolors.RED}{self.loss_cycle_Y.item():.4f}")
 
+    def export_losses(self):
+        return f"G Loss: {self.loss_G.item():.4f}, F Loss: {self.loss_F.item():.4f}, D_X Loss: {self.loss_D_X.item():.4f}, D_Y Loss: {self.loss_D_Y.item():.4f}, Cycle Loss X: {self.loss_cycle_X.item():.4f}, Cycle Loss Y: {self.loss_cycle_Y.item():.4f}"
+    
     def __backward_discriminators(self):
 
         # D_Y loss on real Y images
