@@ -91,7 +91,8 @@ if __name__ == "__main__":
 
             progress_bar_counter += progress_bar_step
             if progress_bar_counter >= 1:
-                for i in range(progress_bar_lenght):
+                progress_bar_counter = int(progress_bar_counter)
+                for i in range(progress_bar_counter):
                     print("=", end="", flush=True)
 
                 progress_bar_counter = 0
@@ -99,7 +100,7 @@ if __name__ == "__main__":
         print("]")
         cycleGAN.print_losses()
 
-        if epoch % 5 == 0 and epoch > 0:
+        if epoch % 4 == 0 and epoch > 0:
             print(f"{bcolors.WHITE}Saving checkpoints")
             cycleGAN.save_checkpoints(epoch)
 
@@ -138,3 +139,48 @@ if __name__ == "__main__":
             os.remove(generated_filenames_file_path)
             shutil.rmtree(validation_set_dir)
             shutil.rmtree(generated_images_dir)
+
+    # Save last version of the model
+
+    validation_filenames_file = open(validation_filenames_filepath, "w")
+    generated_filenames_file = open(generated_filenames_file_path, "w")
+
+    print(f"{bcolors.WHITE}Saving last model")
+    cycleGAN.save_checkpoints(99999)
+
+    print(f"{bcolors.WHITE}---------------")
+    print("Validation step:")
+    cycleGAN_val = CycleGAN(training_phase=False, device=execution_device, save_dir="checkpoints",
+                            generated_images_dir="generated", generated_filenames_file=generated_filenames_file)
+    cycleGAN_val.load_checkpoints(99999)
+    os.makedirs(validation_set_dir, exist_ok=True)
+    os.makedirs(generated_images_dir, exist_ok=True)
+
+    for val_idx, val_data in enumerate(val_dataloader):
+        x_image, y_image = val_data
+        image_filename = f"{val_idx}.png"
+        export_path = os.path.join(validation_set_dir, image_filename)
+        save_image(y_image, export_path)
+        validation_filenames_file.write(export_path + "\n")
+
+        cycleGAN_val.set_input_tensors(x_image, y_image)
+        cycleGAN_val.validation_step()
+
+    
+    validation_filenames_file.close()
+    generated_filenames_file.close()
+    report_losses_and_metrics_file = open(report_losses_and_metrics_file_path, "w")
+    real_data_generator = data_ios.data_prepare_fid_is(validation_filenames_filepath, 1, 299, False)
+    fake_data_generator = data_ios.data_prepare_fid_is(generated_filenames_file_path, 1, 299, False)
+    dims = 2048
+    final_score = fid_score(real_data_generator, fake_data_generator, dims, False)
+    report_losses_and_metrics_file.write(f"Epoch: {epoch}, FID: {final_score}\n")
+    report_losses_and_metrics_file.write(f"{cycleGAN.export_losses()}\n")
+    report_losses_and_metrics_file.close()
+    print(f"{bcolors.CYAN}FID score: {bcolors.GREEN}{final_score}{bcolors.WHITE}")
+    os.remove(validation_filenames_filepath)
+    os.remove(generated_filenames_file_path)
+    shutil.rmtree(validation_set_dir)
+    shutil.rmtree(generated_images_dir)
+
+    print(f"{bcolors.WHITE}Training completed")
