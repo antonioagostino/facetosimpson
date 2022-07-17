@@ -1,16 +1,22 @@
-import torch
 from torch.utils.data import Dataset
-from torchvision import datasets
-from torchvision.transforms import ToTensor
 import torchvision.transforms as T
-import matplotlib.pyplot as plt
 import os
-from torchvision.io import read_image
 import random
 from PIL import Image
 
 class FaceToSimpsonDataset(Dataset):
+    """
+    A class that implements an interface for a Dataset of two domains: X and Y.
+    X contains images of human faces, Y contains images of Simpson's faces.
+    """
     def __init__(self, x_dir: str, y_dir: str, apply_transforms: bool = True):
+        """
+            Initializes the dataset.
+            :param x_dir: path to the directory containing the images of the domain X
+            :param y_dir: path to the directory containing the images of the domain Y
+            :param apply_transforms: if True, applies the training transforms to the images, 
+                otherwise applies the test transforms
+        """
         self.x_dir = x_dir
         self.y_dir = y_dir
         self.x_filenames = [name for name in os.listdir(self.x_dir) if os.path.isfile(os.path.join(self.x_dir, name))]

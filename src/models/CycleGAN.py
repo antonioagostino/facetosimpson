@@ -207,10 +207,11 @@ class CycleGAN(nn.Module):
     def test_step(self):
         with torch.no_grad():
             self.forward()
-            self.__print_results(self.fake_y)
-            self.__print_results(self.fake_x)
-            self.__print_results(self.reconstruction_x)
-            self.__print_results(self.reconstruction_y)
+            image_filename = f"{self.image_export_counter}.png"
+            export_path = os.path.join(self.generated_images_dir, image_filename)
+            save_image(self.fake_y, export_path)
+            self.generated_filenames_file.write(export_path + "\n")
+            self.image_export_counter += 1
 
     def validation_step(self):
         with torch.no_grad():

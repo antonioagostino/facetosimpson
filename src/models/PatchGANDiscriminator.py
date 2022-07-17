@@ -4,6 +4,7 @@ class PatchGANDiscriminator(nn.Module):
 
     def __init__(self, bias: bool, normaliz_layer: nn.Module):
         """Constructs a PatchGAN discriminator (Pix2Pix Discriminator)
+            Paper: https://arxiv.org/pdf/1611.07004.pdf
     
             Parameters:
                 bias (bool): Use bias in the convolutional layers
