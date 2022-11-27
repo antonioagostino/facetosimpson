@@ -1,7 +1,9 @@
+from distutils.command import check
 import torch.nn as nn
 from torch.nn import init
 import torch
 import torchvision
+from torch.optim import lr_scheduler
 from torchvision.utils import save_image
 import random
 from .ResNetGenerator import ResNetGenerator
@@ -90,6 +92,9 @@ class CycleGAN(nn.Module):
                 lr=0.0002, betas=(0.5, 0.999)
             )
 
+            self.gen_lr_scheduler = lr_scheduler.LinearLR(self.optimizer_G, 1.0, 0.0, 100)
+            self.disc_lr_scheduler = lr_scheduler.LinearLR(self.optimizer_D, 1.0, 0.0, 100)
+
     def __initialize_weights(self, network: nn.Module):
         if hasattr(network, 'weight') and network.weight is not None:
             init.normal_(network.weight.data, 0.0, self.init_gain)
@@ -97,7 +102,14 @@ class CycleGAN(nn.Module):
     def set_input_tensors(self, x_img: torch.Tensor, y_img: torch.Tensor):
         self.real_x = x_img.to(self.device)
         self.real_y = y_img.to(self.device)
-    
+
+    def update_learning_rate(self):
+        old_lr = self.optimizer_G.param_groups[0]['lr']
+        self.gen_lr_scheduler.step()
+        self.disc_lr_scheduler.step()
+
+        new_lr = self.optimizer_G.param_groups[0]['lr']
+        print(f"{bcolors.CYAN}Learning Rate updated from {bcolors.GREEN}{old_lr}{bcolors.CYAN} to {bcolors.GREEN}{new_lr}{bcolors.WHITE}")
     
     def __get_generated_image(self, generator_buffer: list[torch.Tensor], generator_buffer_limit: int, images: list[torch.Tensor]):
         images_to_return = []
@@ -213,20 +225,14 @@ class CycleGAN(nn.Module):
             self.generated_filenames_file.write(export_path + "\n")
             self.image_export_counter += 1
 
-    def validation_step(self):
-        with torch.no_grad():
-            self.forward()
-            image_filename = f"{self.image_export_counter}.png"
-            export_path = os.path.join(self.generated_images_dir, image_filename)
-            save_image(self.fake_y, export_path)
-            self.generated_filenames_file.write(export_path + "\n")
-            self.image_export_counter += 1
 
-
-    def save_checkpoints(self, epoch: int):
+    def save_checkpoints(self, best_model: bool, epoch: int):
         models_to_save = ["G", "F", "D_Y", "D_X"]
         for model in models_to_save:
-            save_filename = f"{model}_{epoch}.pt"
+            if best_model:
+                save_filename = f"{model}_best.pt"
+            else:
+                save_filename = f"{model}_last.pt"
             save_path = os.path.join(self.save_dir, save_filename)
             net = getattr(self, model)
 
@@ -238,12 +244,20 @@ class CycleGAN(nn.Module):
 
         optimizers = ['optimizer_G', 'optimizer_D']
         for optimizer in optimizers:
-            save_filename = f"{optimizer}_{epoch}.pt"
+            if best_model:
+                save_filename = f"{optimizer}_best.pt"
+            else:
+                save_filename = f"{optimizer}_last.pt"
             save_path = os.path.join(self.save_dir, save_filename)
             net = getattr(self, optimizer)
             torch.save(net.state_dict(), save_path)
 
-    def load_checkpoints(self, epoch: int, restore_training: bool = False):
+        if best_model:
+            checkpoint_info_file = open(os.path.join(self.save_dir, "checkpoint_info.txt"), "w")
+            checkpoint_info_file.write(f"Best Model epoch: {epoch}\n")
+            checkpoint_info_file.close()
+
+    def load_checkpoints(self, best_model: bool, restore_training: bool = False):
         models_to_load = ["G", "F"]
 
         if restore_training:
@@ -251,7 +265,10 @@ class CycleGAN(nn.Module):
             models_to_load.append("D_X")
         
         for model in models_to_load:
-            load_filename = f"{model}_{epoch}.pt"
+            if best_model:
+                load_filename = f"{model}_best.pt"
+            else:
+                load_filename = f"{model}_last.pt"
             load_path = os.path.join(self.save_dir, load_filename)
             net = getattr(self, model)
             # TODO: Restore checkpoints on MPS
@@ -260,7 +277,10 @@ class CycleGAN(nn.Module):
         if restore_training:
             optimizers = ['optimizer_G', 'optimizer_D']
             for optimizer in optimizers:
-                load_filename = f"{optimizer}_{epoch}.pt"
+                if best_model:
+                    load_filename = f"{optimizer}_best.pt"
+                else:
+                    load_filename = f"{optimizer}_last.pt"
                 load_path = os.path.join(self.save_dir, load_filename)
                 net = getattr(self, optimizer)
                 net.load_state_dict(torch.load(load_path, map_location=self.device))
